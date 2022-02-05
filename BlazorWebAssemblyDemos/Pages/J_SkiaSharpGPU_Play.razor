@@ -1,0 +1,156 @@
+﻿@page "/skiasharp/gpuplay"
+
+<PageTitle>SkiaSharp GPU Play</PageTitle>
+
+<h1>SkiaSharp GPU</h1>
+
+<p>Skia Playground with webassembly via Blazor</p>
+
+<div class="container">
+	<div class="row">
+		<div class="col border rounded p-2 canvas-container">
+
+			<SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true"
+					  EnableRenderLoop="true" />
+
+		</div>
+	</div>
+</div>
+
+@code
+{
+    int tickIndex = 0;
+    long tickSum = 0;
+    long[] tickList = new long[100];
+    long lastTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    double GoldenRatio = 1.61803398874989484820458683436;
+    int numberOfPoints = 0;
+    int alpha = 3;
+    Random random = new Random();
+    float moveX = 125f;
+    float moveY = 125f;
+    bool moveUp = true;
+    bool moveRight = true;
+    int moveSpeed = 10;
+
+
+    void OnPaintSurface(SKPaintGLSurfaceEventArgs e)
+    {
+        var fps = GetCurrentFPS();
+        numberOfPoints = random.Next(100);
+
+        // the the canvas and properties
+        var canvas = e.Surface.Canvas;
+        var surfaceSize = e.Info.Size;
+        var center = new SKPoint(surfaceSize.Width / 2f, surfaceSize.Height / 2f);
+        var now = DateTime.Now;
+
+        if (moveX >= surfaceSize.Width || moveX <= 0) { moveRight = !moveRight; }
+        if (moveY >= surfaceSize.Height || moveY <= 0) { moveUp = !moveUp; }
+
+        if (moveRight)
+        {
+            moveX = moveX + moveSpeed;
+        }
+        else
+        {
+            moveX = moveX - moveSpeed;
+        }
+        if (moveUp)
+        {
+            moveY = moveY + moveSpeed;
+        }
+        else
+        {
+            moveY = moveY - moveSpeed;
+        }
+
+        // make sure the canvas is blank
+        canvas.Clear(SKColors.White);
+
+        using var paint = new SKPaint
+        {
+            IsAntialias = true,
+            StrokeWidth = 5f,
+            StrokeCap = SKStrokeCap.Round,
+            TextAlign = SKTextAlign.Center,
+            TextSize = 24,
+            Style = SKPaintStyle.Fill,
+        };
+
+        // draw the fps counter
+        canvas.DrawText($"{fps:0.00}fps", surfaceSize.Width / 2, surfaceSize.Height - 10f, paint);
+
+        // background
+        paint.Shader = SKShader.CreateLinearGradient(
+            new SKPoint(0, 0),
+            new SKPoint(0, surfaceSize.Height),
+            new[] { SKColors.LightGray, SKColors.DarkRed },
+            SKShaderTileMode.Repeat);
+        //paint.Shader = null;
+
+        // Region
+        paint.Style = SKPaintStyle.Stroke;
+        var path = new SKPath();
+        path.AddPoly(FillCircleWithPoints(numberOfPoints, alpha));
+        var region = new SKRegion(path);
+        canvas.Translate(new SKPoint(moveX, moveY));
+        canvas.DrawPath(path, paint);
+        paint.Style = SKPaintStyle.Fill;
+
+    }
+
+    double GetCurrentFPS()
+    {
+        var newTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var delta = newTick - lastTick;
+        lastTick = newTick;
+
+        tickSum -= tickList[tickIndex];
+        tickSum += delta;
+        tickList[tickIndex] = delta;
+
+        if (++tickIndex == tickList.Length)
+        {
+            tickIndex = 0;
+        }
+
+        return 1000.0 / ((double)tickSum / tickList.Length);
+    }
+
+    double GetRadius(int k, int n, double b)
+    {
+        double r = 0.0;
+
+        if (k > (n - b))
+        {
+            r = 1.0;
+        }
+        else
+        {
+            r = Math.Sqrt(k - 1 / 2) / Math.Sqrt(n - (b + 1) / 2);
+        }
+
+        return r;
+    }
+
+
+    SKPoint[] FillCircleWithPoints(int n, int alpha)
+    {
+
+        double boundaryPointCount = Math.Round(alpha * Math.Sqrt(n));    //  % number of boundary points
+
+        List<SKPoint> points = new List<SKPoint>();
+        for (int k = 1; k < n; k++)
+        {
+            double r = GetRadius(k, n, boundaryPointCount);
+            var theta = 2 * Math.PI * k / Math.Pow(GoldenRatio, 2);
+
+            float x = (float)(r * Math.Cos(theta));
+            float y = (float)(r * Math.Sin(theta));
+            points.Add(new SKPoint(x * 100.0f, y * 100.0f));
+        }
+
+        return points.ToArray();
+    }
+}
