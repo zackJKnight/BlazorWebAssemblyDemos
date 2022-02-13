@@ -3,18 +3,32 @@
 <PageTitle>SkiaSharp GPU Play</PageTitle>
 
 <h1>SkiaSharp GPU</h1>
+<div>
+    <Label>Number of Dandelions</Label>
+    <Slider TValue="decimal" Value="@numberOfDandies" Min="1" Max="100000" Step="100" ValueChanged="@OnDandyCountChanged" />
 
-<p>Skia Playground with webassembly via Blazor</p>
+    <Label>Points per Dandelion</Label>
+    <Slider @bind-Value="@numberOfPoints" Min="1" Max="500" Step="10" />
 
+    <br />
+    <Label>Movement Speed</Label>
+    <Slider @bind-Value="@moveSpeed" Min="0" Max="25" Step="1" />
+
+    <br />
+    <Label>Angle</Label>
+    <Slider @bind-Value="@alpha" Min="0" Max="10" Step="1" />
+</div>
+<div>
+    <Label>Color</Label>
+    <ColorPicker @bind-Value="@startColorHex" ColorChanged="@OnStartColorChanged"/>
+</div>
 <div class="container">
-	<div class="row">
-		<div class="col border rounded p-2 canvas-container">
-
-			<SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true"
-					  EnableRenderLoop="true" />
-
-		</div>
-	</div>
+    <div class="row">
+        <div class="col border rounded p-2 canvas-container">
+        <SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true"
+                  EnableRenderLoop="true" />
+        </div>
+    </div>
 </div>
 
 @code
@@ -24,23 +38,36 @@
     long[] tickList = new long[100];
     long lastTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     double GoldenRatio = 1.61803398874989484820458683436;
-    int numberOfPoints = 0;
-    int alpha = 3;
+    int numberOfPoints = 1;
+    decimal numberOfDandies = 1;
+    int alpha = 0;
     Random random = new Random();
     float moveX = 125f;
     float moveY = 125f;
     bool moveUp = true;
     bool moveRight = true;
-    int moveSpeed = 10;
+    int moveSpeed = 0;
+    string startColorHex = "FFF0F8FF";
+    SKColor startColor = SKColors.AliceBlue;
+
+    void OnDandyCountChanged(decimal newNumberOfDandies)
+    {
+        numberOfDandies = newNumberOfDandies;
+    }
+
+    void OnStartColorChanged(string newColor)
+    {
+        SKColor.TryParse(newColor, out startColor);
+    }
 
 
     void OnPaintSurface(SKPaintGLSurfaceEventArgs e)
     {
         var fps = GetCurrentFPS();
-        numberOfPoints = random.Next(100);
+        //numberOfPoints = random.Next(100);
 
         // the the canvas and properties
-        var canvas = e.Surface.Canvas;
+        SKCanvas canvas = e.Surface.Canvas;
         var surfaceSize = e.Info.Size;
         var center = new SKPoint(surfaceSize.Width / 2f, surfaceSize.Height / 2f);
         var now = DateTime.Now;
@@ -67,7 +94,6 @@
 
         // make sure the canvas is blank
         canvas.Clear(SKColors.White);
-
         using var paint = new SKPaint
         {
             IsAntialias = true,
@@ -77,7 +103,6 @@
             TextSize = 24,
             Style = SKPaintStyle.Fill,
         };
-
         // draw the fps counter
         canvas.DrawText($"{fps:0.00}fps", surfaceSize.Width / 2, surfaceSize.Height - 10f, paint);
 
@@ -85,17 +110,19 @@
         paint.Shader = SKShader.CreateLinearGradient(
             new SKPoint(0, 0),
             new SKPoint(0, surfaceSize.Height),
-            new[] { SKColors.LightGray, SKColors.DarkRed },
+            new[] { startColor },
             SKShaderTileMode.Repeat);
-        //paint.Shader = null;
 
         // Region
         paint.Style = SKPaintStyle.Stroke;
-        var path = new SKPath();
-        path.AddPoly(FillCircleWithPoints(numberOfPoints, alpha));
-        var region = new SKRegion(path);
+
         canvas.Translate(new SKPoint(moveX, moveY));
-        canvas.DrawPath(path, paint);
+        //for (int i = 0; i < numberOfDandies; i++)
+        //{
+        canvas.DrawPoints(SKPointMode.Points,
+FillCircleWithPoints(numberOfPoints, alpha),
+paint);
+        //}
         paint.Style = SKPaintStyle.Fill;
 
     }
@@ -133,7 +160,6 @@
 
         return r;
     }
-
 
     SKPoint[] FillCircleWithPoints(int n, int alpha)
     {

@@ -14,8 +14,12 @@
 		<EmccCompileOptimizationFlag>-O1</EmccCompileOptimizationFlag>
 	</PropertyGroup>
 
-	<PropertyGroup Condition=" '$(RunConfiguration)' == 'BlazorApp1.Server' " />
+	<PropertyGroup Condition=" '$(RunConfiguration)' == 'BlazorApp1.Server' ">
+	  <ExternalConsole>true</ExternalConsole>
+	</PropertyGroup>
 	<ItemGroup>
+		<PackageReference Include="Blazorise.Icons.Material" Version="0.9.5.5" />
+		<PackageReference Include="Blazorise.Material" Version="0.9.5.5" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="6.0.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="6.0.1" PrivateAssets="all" />
 		<PackageReference Include="SkiaSharp.Views.Blazor" Version="2.88.0-preview.187" />
