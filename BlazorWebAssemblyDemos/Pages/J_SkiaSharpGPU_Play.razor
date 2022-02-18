@@ -5,7 +5,7 @@
 <h1>SkiaSharp GPU</h1>
 <div>
     <Label>Number of Dandelions</Label>
-    <Slider TValue="decimal" Value="@numberOfDandies" Min="1" Max="100000" Step="100" ValueChanged="@OnDandyCountChanged" />
+    <Slider TValue="float" Value="@numberOfDandies" Min="1" Max="100" Step="1" ValueChanged="@OnDandyCountChanged" />
 
     <Label>Points per Dandelion</Label>
     <Slider @bind-Value="@numberOfPoints" Min="1" Max="500" Step="10" />
@@ -15,7 +15,7 @@
     <Slider @bind-Value="@moveSpeed" Min="0" Max="25" Step="1" />
 
     <br />
-    <Label>Angle</Label>
+    <Label>Boundary Points</Label>
     <Slider @bind-Value="@alpha" Min="0" Max="10" Step="1" />
 </div>
 <div>
@@ -39,7 +39,7 @@
     long lastTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     double GoldenRatio = 1.61803398874989484820458683436;
     int numberOfPoints = 1;
-    decimal numberOfDandies = 1;
+    float numberOfDandies = 1;
     int alpha = 0;
     Random random = new Random();
     float moveX = 125f;
@@ -47,10 +47,10 @@
     bool moveUp = true;
     bool moveRight = true;
     int moveSpeed = 0;
-    string startColorHex = "FFF0F8FF";
-    SKColor startColor = SKColors.AliceBlue;
+    string startColorHex = "FFFF0000";
+    SKColor startColor = SKColors.Red;
 
-    void OnDandyCountChanged(decimal newNumberOfDandies)
+    void OnDandyCountChanged(float newNumberOfDandies)
     {
         numberOfDandies = newNumberOfDandies;
     }
@@ -115,14 +115,20 @@
 
         // Region
         paint.Style = SKPaintStyle.Stroke;
-
+        var points = FillCircleWithPoints(numberOfPoints, alpha);
         canvas.Translate(new SKPoint(moveX, moveY));
-        //for (int i = 0; i < numberOfDandies; i++)
-        //{
-        canvas.DrawPoints(SKPointMode.Points,
-FillCircleWithPoints(numberOfPoints, alpha),
-paint);
-        //}
+        for (float i = 0; i < numberOfDandies; i++)
+        {
+            var pointsCopy = new List<SKPoint>();
+            points.ToList().ForEach(point =>
+            pointsCopy.Add(new SKPoint(point.X + (surfaceSize.Width / i), point.Y -(surfaceSize.Height / i))));
+            
+            canvas.DrawPoints(
+                SKPointMode.Points,
+                pointsCopy.ToArray(),
+                paint);
+            pointsCopy = null;
+        }
         paint.Style = SKPaintStyle.Fill;
 
     }
