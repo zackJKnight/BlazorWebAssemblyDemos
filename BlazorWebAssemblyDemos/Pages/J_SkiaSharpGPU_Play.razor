@@ -1,32 +1,34 @@
 ﻿@page "/skiasharp/gpuplay"
 
-<PageTitle>SkiaSharp GPU Play</PageTitle>
+<PageTitle>Dandelions</PageTitle>
+<div class="container">
+    <div class="column">
 
-<h1>SkiaSharp GPU</h1>
-<div>
-    <Label>Number of Dandelions</Label>
-    <Slider TValue="float" Value="@numberOfDandies" Min="1" Max="100" Step="1" ValueChanged="@OnDandyCountChanged" />
+        <Label>Number of Dandelions</Label>
+        <Slider @bind-Value="@numberOfDandies" Min="1" Max="500" Step="10" />
 
-    <Label>Points per Dandelion</Label>
-    <Slider @bind-Value="@numberOfPoints" Min="1" Max="500" Step="10" />
+        <Label>Points per Dandelion</Label>
+        <Slider @bind-Value="@numberOfPoints" Min="1" Max="500" Step="10" />
 
-    <br />
-    <Label>Movement Speed</Label>
-    <Slider @bind-Value="@moveSpeed" Min="0" Max="25" Step="1" />
+        <br />
+        <Label>Movement Speed</Label>
+        <Slider @bind-Value="@moveSpeed" Min="0" Max="25" Step="1" />
+    </div>
+    <div class="column">
+        <Label>Scale</Label>
+        <Slider TValue="float" @bind-Value="@pointScale" Min="26" Max="100" Step="2" />
+        <br />
+        <Label>Boundary Points</Label>
+        <Slider @bind-Value="@alpha" Min="0" Max="10" Step="1" />
 
-    <br />
-    <Label>Boundary Points</Label>
-    <Slider @bind-Value="@alpha" Min="0" Max="10" Step="1" />
-</div>
-<div>
-    <Label>Color</Label>
-    <ColorPicker @bind-Value="@startColorHex" ColorChanged="@OnStartColorChanged"/>
+        <Label>Color</Label>
+        <ColorPicker @bind-Value="@startColorHex" ColorChanged="@OnStartColorChanged" />
+    </div>
 </div>
 <div class="container">
     <div class="row">
         <div class="col border rounded p-2 canvas-container">
-        <SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true"
-                  EnableRenderLoop="true" />
+            <SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true" EnableRenderLoop="true" />
         </div>
     </div>
 </div>
@@ -39,58 +41,74 @@
     long lastTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     double GoldenRatio = 1.61803398874989484820458683436;
     int numberOfPoints = 1;
-    float numberOfDandies = 1;
+    int numberOfDandies = 10;
     int alpha = 0;
     Random random = new Random();
     float moveX = 125f;
     float moveY = 125f;
     bool moveUp = true;
     bool moveRight = true;
-    int moveSpeed = 0;
+    int moveSpeed = 1;
     string startColorHex = "FFFF0000";
     SKColor startColor = SKColors.Red;
-
-    void OnDandyCountChanged(float newNumberOfDandies)
-    {
-        numberOfDandies = newNumberOfDandies;
-    }
+    float pointScale = 60.0f;
+    float hCenter;
+    float vCenter;
+    List<float[]> points = new List<float[]>();
+    List<Dandelion> dandelions = new List<Dandelion>();
 
     void OnStartColorChanged(string newColor)
     {
         SKColor.TryParse(newColor, out startColor);
     }
 
+    void OnNumberOfDandiesChanged(int newDandyCount)
+    {
+        if (dandelions.Count() < newDandyCount)
+        {
+            AddDandies((int)(newDandyCount - dandelions.Count()));
+        }
+        else if (dandelions.Count() > newDandyCount)
+        {
+            dandelions.RemoveRange((int)newDandyCount, (int)(dandelions.Count() - newDandyCount));
+        }
+    }
+    void AddDandies(int numberToAdd)
+    {
+        for (float i = 0; i < numberToAdd; i++)
+        {
+
+            dandelions.Add(new Dandelion()
+            {
+                moveX = random.Next(0, 150),
+                moveY = random.Next(0, 150),
+                moveSpeed = moveSpeed,
+                moveRight = moveRight,
+                moveUp = moveUp
+            });
+        }
+    }
 
     void OnPaintSurface(SKPaintGLSurfaceEventArgs e)
     {
+        if (!dandelions.Any())
+        {
+            AddDandies(numberOfDandies);
+        }
+        
+        OnNumberOfDandiesChanged(numberOfDandies);
+
         var fps = GetCurrentFPS();
         //numberOfPoints = random.Next(100);
 
         // the the canvas and properties
         SKCanvas canvas = e.Surface.Canvas;
         var surfaceSize = e.Info.Size;
-        var center = new SKPoint(surfaceSize.Width / 2f, surfaceSize.Height / 2f);
+
+        hCenter = surfaceSize.Width / 2f;
+        vCenter = surfaceSize.Height / 2f;
+        // var center = new SKPoint(hCenter, vCenter);
         var now = DateTime.Now;
-
-        if (moveX >= surfaceSize.Width || moveX <= 0) { moveRight = !moveRight; }
-        if (moveY >= surfaceSize.Height || moveY <= 0) { moveUp = !moveUp; }
-
-        if (moveRight)
-        {
-            moveX = moveX + moveSpeed;
-        }
-        else
-        {
-            moveX = moveX - moveSpeed;
-        }
-        if (moveUp)
-        {
-            moveY = moveY + moveSpeed;
-        }
-        else
-        {
-            moveY = moveY - moveSpeed;
-        }
 
         // make sure the canvas is blank
         canvas.Clear(SKColors.White);
@@ -104,31 +122,36 @@
             Style = SKPaintStyle.Fill,
         };
         // draw the fps counter
-        canvas.DrawText($"{fps:0.00}fps", surfaceSize.Width / 2, surfaceSize.Height - 10f, paint);
+        canvas.DrawText($"{fps:0.00}fps", hCenter, surfaceSize.Height - 10f, paint);
 
         // background
-        paint.Shader = SKShader.CreateLinearGradient(
-            new SKPoint(0, 0),
-            new SKPoint(0, surfaceSize.Height),
-            new[] { startColor },
-            SKShaderTileMode.Repeat);
 
         // Region
         paint.Style = SKPaintStyle.Stroke;
-        var points = FillCircleWithPoints(numberOfPoints, alpha);
-        canvas.Translate(new SKPoint(moveX, moveY));
+        points.Clear();
+        FillCircleWithPoints(numberOfPoints, alpha);
         for (float i = 0; i < numberOfDandies; i++)
         {
-            var pointsCopy = new List<SKPoint>();
+            var dandy = dandelions.ElementAt((int)i);
+            dandy.moveSpeed = moveSpeed + (int)i;
+            // higher the x and y, the more right and down
+            dandy.Update(hCenter, vCenter, pointScale);
+            dandy.points.Clear();
+
             points.ToList().ForEach(point =>
-            pointsCopy.Add(new SKPoint(point.X + (surfaceSize.Width / i), point.Y -(surfaceSize.Height / i))));
-            
-            canvas.DrawPoints(
-                SKPointMode.Points,
-                pointsCopy.ToArray(),
-                paint);
-            pointsCopy = null;
+            dandy.points.Add(new SKPoint((point[0] * pointScale) + hCenter + dandy.moveX,
+            (point[1] * pointScale) + vCenter + dandy.moveY)));
+
         }
+
+        dandelions.ForEach((dandy) =>
+        {
+            canvas.DrawPoints(
+    SKPointMode.Points,
+    dandy.points.ToArray(),
+    paint);
+        });
+
         paint.Style = SKPaintStyle.Fill;
 
     }
@@ -167,12 +190,9 @@
         return r;
     }
 
-    SKPoint[] FillCircleWithPoints(int n, int alpha)
+    void FillCircleWithPoints(int n, int alpha)
     {
-
-        double boundaryPointCount = Math.Round(alpha * Math.Sqrt(n));    //  % number of boundary points
-
-        List<SKPoint> points = new List<SKPoint>();
+        double boundaryPointCount = Math.Round(alpha * Math.Sqrt(n)); // % number of boundary points
         for (int k = 1; k < n; k++)
         {
             double r = GetRadius(k, n, boundaryPointCount);
@@ -180,9 +200,8 @@
 
             float x = (float)(r * Math.Cos(theta));
             float y = (float)(r * Math.Sin(theta));
-            points.Add(new SKPoint(x * 100.0f, y * 100.0f));
+            points.Add(new[] { x, y });
         }
 
-        return points.ToArray();
     }
 }

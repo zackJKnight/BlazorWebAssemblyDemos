@@ -1,4 +1,4 @@
-using BlazorWebAssemblyDemos;
+﻿using BlazorWebAssemblyDemos;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Blazorise;
@@ -12,10 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 builder.Services
-      .AddBlazorise(options =>
-      {
-          options.ChangeTextOnKeyPress = true;
-      })
+      .AddBlazorise()
       .AddMaterialProviders()
       .AddMaterialIcons();
 
