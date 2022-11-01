@@ -3,9 +3,15 @@
 <PageTitle>Dandelions</PageTitle>
 <div class="container">
     <div class="column">
+        <div class="col border rounded p-2 canvas-container" @ref="testRef" tabindex="0" @onkeydown="HandleKeyDown">
+            <SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true" EnableRenderLoop="true" />
+        </div>
+    </div>
+    <div class="column">
 
-        <Label>Number of Dandelions</Label>
-        <Slider @bind-Value="@numberOfDandies" Min="1" Max="500" Step="10" />
+        <Label>Add Dandelions with Arrow Keys!</Label>
+        <br />
+        @*<Slider @bind-Value="@numberOfDandies" Min="1" Max="500" Step="10" />*@
 
         <Label>Points per Dandelion</Label>
         <Slider @bind-Value="@numberOfPoints" Min="1" Max="500" Step="10" />
@@ -23,13 +29,7 @@
 
         <Label>Color</Label>
         <ColorPicker @bind-Value="@startColorHex" ColorChanged="@OnStartColorChanged" />
-    </div>
-</div>
-<div class="container">
-    <div class="row">
-        <div class="col border rounded p-2 canvas-container">
-            <SKGLView OnPaintSurface="OnPaintSurface" IgnorePixelScaling="true" EnableRenderLoop="true" />
-        </div>
+        <Button Clicked="@OnClear">Clear </Button>
     </div>
 </div>
 
@@ -41,11 +41,9 @@
     long lastTick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     double GoldenRatio = 1.61803398874989484820458683436;
     int numberOfPoints = 1;
-    int numberOfDandies = 10;
+    int numberOfDandies = 1;
     int alpha = 0;
     Random random = new Random();
-    float moveX = 125f;
-    float moveY = 125f;
     bool moveUp = true;
     bool moveRight = true;
     int moveSpeed = 1;
@@ -62,6 +60,11 @@
         SKColor.TryParse(newColor, out startColor);
     }
 
+    void OnClear()
+    {
+        numberOfDandies = 0;
+        OnNumberOfDandiesChanged(0);
+    }
     void OnNumberOfDandiesChanged(int newDandyCount)
     {
         if (dandelions.Count() < newDandyCount)
@@ -95,23 +98,37 @@
         {
             AddDandies(numberOfDandies);
         }
-        
+
         OnNumberOfDandiesChanged(numberOfDandies);
 
         var fps = GetCurrentFPS();
-        //numberOfPoints = random.Next(100);
 
         // the the canvas and properties
         SKCanvas canvas = e.Surface.Canvas;
         var surfaceSize = e.Info.Size;
 
-        hCenter = surfaceSize.Width / 2f;
-        vCenter = surfaceSize.Height / 2f;
-        // var center = new SKPoint(hCenter, vCenter);
+        hCenter = (surfaceSize.Width / 2f);
+        vCenter = (surfaceSize.Height / 2f);
+
         var now = DateTime.Now;
 
         // make sure the canvas is blank
         canvas.Clear(SKColors.White);
+        using var textPaint = new SKPaint
+        {
+            IsAntialias = true,
+            StrokeWidth = 5f,
+            StrokeCap = SKStrokeCap.Round,
+            TextAlign = SKTextAlign.Center,
+            TextSize = 24,
+            Style = SKPaintStyle.Fill,
+            Color = SKColors.Red
+        };
+        // draw the fps counter
+
+        canvas.DrawText($"{fps:0.00}fps", hCenter, surfaceSize.Height - 10f, textPaint);
+        canvas.DrawText($"{numberOfDandies}", 90, surfaceSize.Height - 10f, textPaint);
+        // background
         using var paint = new SKPaint
         {
             IsAntialias = true,
@@ -121,11 +138,6 @@
             TextSize = 24,
             Style = SKPaintStyle.Fill,
         };
-        // draw the fps counter
-        canvas.DrawText($"{fps:0.00}fps", hCenter, surfaceSize.Height - 10f, paint);
-
-        // background
-
         // Region
         paint.Style = SKPaintStyle.Stroke;
         points.Clear();
@@ -133,7 +145,7 @@
         for (float i = 0; i < numberOfDandies; i++)
         {
             var dandy = dandelions.ElementAt((int)i);
-            dandy.moveSpeed = moveSpeed + (int)i;
+            dandy.moveSpeed = moveSpeed > 0 ? moveSpeed + (int)i : moveSpeed;
             // higher the x and y, the more right and down
             dandy.Update(hCenter, vCenter, pointScale);
             dandy.points.Clear();
@@ -203,5 +215,33 @@
             points.Add(new[] { x, y });
         }
 
+    }
+
+    private ElementReference testRef;
+    private string pressedKey;
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        pressedKey = e.Key;
+
+        if (pressedKey == "ArrowRight")
+        {
+            numberOfDandies = numberOfDandies + 1;
+        }
+        if (pressedKey == "ArrowLeft")
+        {
+            if (numberOfDandies > 0)
+            {
+                numberOfDandies = numberOfDandies - 1;
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await testRef.FocusAsync();
+        }
     }
 }
